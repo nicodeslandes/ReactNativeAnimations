@@ -12,25 +12,45 @@ import {StyleSheet, View} from 'react-native';
 import Animated from 'react-native-reanimated';
 import { PanGestureHandler, State, TapGestureHandler } from 'react-native-gesture-handler';
 
-const { Value, add,debug, cond, eq, interpolate, set } = Animated;
+const { Clock, Value, debug, add, divide, startClock, sin, multiply, stopClock, cond, eq, interpolate, set } = Animated;
 type Node<T> = Animated.Node<T>;
 
 type Props = {};
 export default class App extends Component<Props> {
   gestureEvent: (...args: any[]) => void;
+  tapGestureEvent: (...args: any[]) => void;
   _opacity: Node<number>;
   private _offsetX: Node<number>;
   _rotation: Animated.Node<number>;
+  _offsetY: Animated.Node<number>;
 
   constructor() {
     super();
 
     const state = new Value(-1);
+    const tapState = new Value(-1);
     const dx = new Value(0);
     const xStart = new Value(0);
+    const clock = new Clock();
+    const clockStarted = new Value(-1);
+
+    cond(eq(debug('clockStarted', clockStarted), 1),
+      startClock(clock),
+      stopClock(clock)
+    );
+
+    
+
+    cond(eq(state, State.BEGAN),
+      set(clockStarted, multiply(clockStarted, -1)),
+      set(clockStarted, multiply(clockStarted, -1)),
+    )
+
+    this._offsetY = multiply(sin(divide(clock, 1000)), 200);
 
     this._offsetX = cond(eq(state, State.END), [
-        set(xStart, add(xStart, dx)),
+        stopClock(clock),
+        set(xStart, add(xStart, debug('dx', dx))),
         xStart],
       add(xStart, dx));
 
@@ -47,6 +67,9 @@ export default class App extends Component<Props> {
       extrapolate: 'clamp',
     });
 
+    this.tapGestureEvent = Animated.event([{
+      nativeEvent: { state: tapState }
+    }]);
     this.gestureEvent = Animated.event([{
       nativeEvent: { state, translationX: dx }
     }]);
@@ -61,6 +84,7 @@ export default class App extends Component<Props> {
             transform: [
               {
                 translateX: this._offsetX,
+                translateY: this._offsetY,
                 rotate: this._rotation
               }
             ]}]} />
