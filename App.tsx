@@ -35,16 +35,8 @@ export default class App extends Component<Props> {
     const y = new Value(0);
     const clock = new Clock();
 
-    const dy = multiply(sin(divide(clock, 1000)), 200);
-    this._offsetY =
-      cond(clockRunning(clock), [
-        add(y, dy),
-      ],
-        [
-          
-          y,
-        ]
-      );
+    const dy = multiply(sin(divide(clock, 500)), 200);
+    this._offsetY = cond(clockRunning(clock), add(y, dy), y);
 
     const ifClockIsNotRunning = (action: Adaptable<number>) => cond(not(clockRunning(clock)), action);
       
