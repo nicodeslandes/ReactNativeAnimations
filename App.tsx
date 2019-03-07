@@ -10,10 +10,11 @@
 import React, {Component} from 'react';
 import {StyleSheet, View} from 'react-native';
 import Animated from 'react-native-reanimated';
-import { PanGestureHandler, State, TapGestureHandler } from 'react-native-gesture-handler';
+import { PanGestureHandler, State } from 'react-native-gesture-handler';
 
-const { Clock, Value, debug, add, divide, startClock, sin, multiply, stopClock, cond, eq, interpolate, set } = Animated;
+const { Clock, Value, debug, add, divide, clockRunning, startClock, sin, sub, multiply, stopClock, cond, not, eq, interpolate, set } = Animated;
 type Node<T> = Animated.Node<T>;
+type Adaptable<T> = Animated.Adaptable<T>;
 
 type Props = {};
 export default class App extends Component<Props> {
@@ -24,37 +25,40 @@ export default class App extends Component<Props> {
   _rotation: Animated.Node<number>;
   _offsetY: Animated.Node<number>;
 
-  constructor() {
-    super();
+  constructor(props: Props) {
+    super(props);
 
     const state = new Value(-1);
     const tapState = new Value(-1);
     const dx = new Value(0);
-    const xStart = new Value(0);
+    const x = new Value(0);
+    const y = new Value(0);
     const clock = new Clock();
-    const clockStarted = new Value(-1);
 
-    cond(eq(debug('clockStarted', clockStarted), 1),
-      startClock(clock),
-      stopClock(clock)
-    );
+    const dy = multiply(sin(divide(clock, 1000)), 200);
+    this._offsetY =
+      cond(clockRunning(clock), [
+        add(y, dy),
+      ],
+        [
+          
+          y,
+        ]
+      );
 
-    
+    const ifClockIsNotRunning = (action: Adaptable<number>) => cond(not(clockRunning(clock)), action);
+      
+    this._offsetX =
+      cond(eq(debug('state', state), State.BEGAN), [
+          ifClockIsNotRunning([set(y, sub(y, dy)), startClock(clock)]),
+          add(x, dx)
+        ],
+        cond(eq(state, State.ACTIVE),
+          add(x, dx),
+          [ stopClock(clock), set(y, add(y, dy)), set(x, add(x, dx)) ]
+          )
+        );
 
-    cond(eq(state, State.BEGAN),
-      set(clockStarted, multiply(clockStarted, -1)),
-      set(clockStarted, multiply(clockStarted, -1)),
-    )
-
-    this._offsetY = multiply(sin(divide(clock, 1000)), 200);
-
-    this._offsetX = cond(eq(state, State.END), [
-        stopClock(clock),
-        set(xStart, add(xStart, debug('dx', dx))),
-        xStart],
-      add(xStart, dx));
-
-    //this._opacity = cond(eq(state, State.BEGAN), 0.2, 1);
     this._opacity = interpolate(this._offsetX,{
       inputRange: [-200, 200],
       outputRange: [0, 1],
