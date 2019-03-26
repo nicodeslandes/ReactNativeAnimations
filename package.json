@@ -4,12 +4,15 @@
   "private": true,
   "scripts": {
     "start": "node node_modules/react-native/local-cli/cli.js start",
+    "android": "node node_modules/react-native/local-cli/cli.js run-android",
     "test": "jest",
     "lint": "eslint ."
   },
   "dependencies": {
     "react": "16.8.3",
-    "react-native": "0.59.2"
+    "react-native": "0.59.2",
+    "react-native-gesture-handler": "^1.1.0",
+    "react-native-reanimated": "^1.0.0-alpha.12"
   },
   "devDependencies": {
     "@babel/core": "^7.4.0",
