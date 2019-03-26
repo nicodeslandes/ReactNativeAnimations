@@ -1,92 +1,85 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- * @flow
- */
-
-import React, {Component} from 'react';
+import React, {useRef} from 'react';
 import {StyleSheet, View} from 'react-native';
 import Animated from 'react-native-reanimated';
-import { PanGestureHandler, State } from 'react-native-gesture-handler';
+import { PanGestureHandler, State, PanGestureHandlerStateChangeEvent } from 'react-native-gesture-handler';
 
 const { Clock, Value, debug, add, divide, clockRunning, startClock, sin, sub, multiply, stopClock, cond, not, eq, interpolate, set } = Animated;
 type Node<T> = Animated.Node<T>;
 type Adaptable<T> = Animated.Adaptable<T>;
 
-type Props = {};
-export default class App extends Component<Props> {
-  gestureEvent: (...args: any[]) => void;
-  tapGestureEvent: (...args: any[]) => void;
-  _opacity: Node<number>;
-  private _offsetX: Node<number>;
-  _rotation: Animated.Node<number>;
-  _offsetY: Animated.Node<number>;
+const pi = 3.141592
 
-  constructor(props: Props) {
-    super(props);
+interface AnimationState {
+  gestureEvent: (event: PanGestureHandlerStateChangeEvent) => void;
+  opacity: Node<number>;
+  offsetX: Node<number>;
+  rotation: Animated.Node<number>;
+  offsetY: Animated.Node<number>;
+}
 
-    const state = new Value(-1);
-    const tapState = new Value(-1);
-    const dx = new Value(0);
-    const x = new Value(0);
-    const y = new Value(0);
-    const clock = new Clock();
+function buildAnimation() {
+  const state = new Value(-1);
+  const dx = new Value(0);
+  const x = new Value(0);
+  const y = new Value(0);
+  const clock = new Clock();
 
-    const dy = multiply(sin(divide(clock, 500)), 200);
-    this._offsetY = cond(clockRunning(clock), add(y, dy), y);
+  const dy = multiply(sin(divide(clock, 500)), 200);
+  
+  const offsetY = cond(clockRunning(clock), add(y, dy), y);
 
-    const ifClockIsNotRunning = (action: Adaptable<number>) => cond(not(clockRunning(clock)), action);
-      
-    this._offsetX =
-      cond(eq(debug('state', state), State.BEGAN), [
-          ifClockIsNotRunning([set(y, sub(y, dy)), startClock(clock)]),
-          add(x, dx)
-        ],
-        cond(eq(state, State.ACTIVE),
-          add(x, dx),
-          [ stopClock(clock), set(y, add(y, dy)), set(x, add(x, dx)) ]
-          )
-        );
+  const ifClockIsNotRunning = (action: Adaptable<number>) => cond(not(clockRunning(clock)), action);
+    
+  const offsetX =
+    cond(eq(debug('state', state), State.BEGAN), [
+        ifClockIsNotRunning([set(y, sub(y, dy)), startClock(clock)]),
+        add(x, dx)
+      ],
+      cond(eq(state, State.ACTIVE),
+        add(x, dx),
+        [ stopClock(clock), set(y, add(y, dy)), set(x, add(x, dx)) ]
+        )
+      );
 
-    this._opacity = interpolate(this._offsetX,{
-      inputRange: [-200, 200],
-      outputRange: [0, 1],
-      extrapolate: 'clamp',
-    });
+  const opacity = interpolate(offsetX,{
+    inputRange: [-200, 200],
+    outputRange: [0, 1],
+    extrapolate: 'clamp',
+  });
 
-    this._rotation = interpolate(this._offsetX,{
-      inputRange: [-200, 200],
-      outputRange: [-3.14159, 3.14159],
-      extrapolate: 'clamp',
-    });
+  const rotation = interpolate(offsetX,{
+    inputRange: [-200, 200],
+    outputRange: [-pi, pi],
+    extrapolate: 'clamp',
+  });
+  
+  const gestureEvent = Animated.event([{
+    nativeEvent: { state, translationX: dx }
+  }]);
 
-    this.tapGestureEvent = Animated.event([{
-      nativeEvent: { state: tapState }
-    }]);
-    this.gestureEvent = Animated.event([{
-      nativeEvent: { state, translationX: dx }
-    }]);
-  }
-  render() {
-    return (
-      <View style={styles.container}>
-        <PanGestureHandler onHandlerStateChange={this.gestureEvent}
-          onGestureEvent={this.gestureEvent}>
-          <Animated.View style={[styles.box, {
-            opacity: this._opacity,
-            transform: [
-              {
-                translateX: this._offsetX,
-                translateY: this._offsetY,
-                rotate: this._rotation
-              }
-            ]}]} />
-        </PanGestureHandler>
-      </View>
-    );
-  }
+  return {gestureEvent, opacity, offsetX, offsetY, rotation};
+}
+
+export default function App() {
+  const sRef = useRef<AnimationState>();
+  const s = sRef.current || (sRef.current = buildAnimation());
+
+  return (
+    <View style={styles.container}>
+      <PanGestureHandler onHandlerStateChange={s.gestureEvent}
+        onGestureEvent={s.gestureEvent}>
+        <Animated.View style={[styles.box, {
+          opacity: s.opacity,
+          transform: [
+            {
+              translateX: s.offsetX,
+              translateY: s.offsetY,
+              rotate: s.rotation
+            }
+          ]}]} />
+      </PanGestureHandler>
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
