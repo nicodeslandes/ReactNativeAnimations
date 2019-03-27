@@ -1,4 +1,4 @@
-import React, {useRef} from 'react';
+import React, {useRef, useEffect} from 'react';
 import {StyleSheet, View} from 'react-native';
 import Animated from 'react-native-reanimated';
 import { PanGestureHandler, State, PanGestureHandlerStateChangeEvent } from 'react-native-gesture-handler';
@@ -17,7 +17,7 @@ interface AnimationState {
   offsetY: Animated.Node<number>;
 }
 
-function buildAnimation() {
+function buildAnimations() {
   const state = new Value(-1);
   const dx = new Value(0);
   const x = new Value(0);
@@ -60,21 +60,26 @@ function buildAnimation() {
   return {gestureEvent, opacity, offsetX, offsetY, rotation};
 }
 
-export default function App() {
+function useAnimations() {
   const sRef = useRef<AnimationState>();
-  const s = sRef.current || (sRef.current = buildAnimation());
+  if (!sRef.current) sRef.current = buildAnimations();
+  return sRef.current;
+}
+
+export default function App() {
+  const a = useAnimations();
 
   return (
     <View style={styles.container}>
-      <PanGestureHandler onHandlerStateChange={s.gestureEvent}
-        onGestureEvent={s.gestureEvent}>
+      <PanGestureHandler onHandlerStateChange={a.gestureEvent}
+        onGestureEvent={a.gestureEvent}>
         <Animated.View style={[styles.box, {
-          opacity: s.opacity,
+          opacity: a.opacity,
           transform: [
             {
-              translateX: s.offsetX,
-              translateY: s.offsetY,
-              rotate: s.rotation
+              translateX: a.offsetX,
+              translateY: a.offsetY,
+              rotate: a.rotation
             }
           ]}]} />
       </PanGestureHandler>
